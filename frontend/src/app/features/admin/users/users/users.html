@@ -1,0 +1,169 @@
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+
+    <!-- Header -->
+    <div class="page-header">
+      <div>
+        <h1>{{ ts.t().users_title }}</h1>
+        <p>{{ filteredUsers.length }} utilisateur(s) trouvé(s)</p>
+      </div>
+    </div>
+
+    <!-- Success message -->
+    @if (successMessage()) {
+      <div class="success-banner">
+        <mat-icon>check_circle</mat-icon>
+        <span>{{ successMessage() }}</span>
+      </div>
+    }
+
+    <!-- Error -->
+    @if (error()) {
+      <div class="error-banner">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    }
+
+    <!-- Filter -->
+    <div class="filter-bar">
+      @for (option of filterOptions; track option) {
+        <button class="filter-btn"
+                [class.active]="selectedRole() === option"
+                (click)="selectedRole.set(option)">
+          {{ option === 'ALL' ? 'Tous' : option }}
+        </button>
+      }
+    </div>
+
+    <!-- Loading -->
+    @if (isLoading()) {
+      <div class="loading-container">
+        <mat-spinner diameter="48"></mat-spinner>
+      </div>
+    }
+
+    <!-- Users grid -->
+    @if (!isLoading()) {
+      @if (filteredUsers.length === 0) {
+        <div class="empty-state">
+          <mat-icon>group_off</mat-icon>
+          <p>Aucun utilisateur trouvé</p>
+        </div>
+      } @else {
+        <div class="users-grid">
+          @for (user of filteredUsers; track user.id) {
+            <div class="user-card" [class.disabled]="!user.enabled">
+
+              <!-- Avatar -->
+              <div class="user-avatar"
+                   [style.background]="getRoleColor(user.role)">
+                {{ getInitials(user.fullName) }}
+              </div>
+
+              <!-- Info -->
+              <div class="user-info">
+                <h3 class="user-name">{{ user.fullName }}</h3>
+                <p class="user-email">{{ user.email }}</p>
+                <p class="user-date">
+                  Inscrit le {{ user.createdAt | date:'dd/MM/yyyy' }}
+                </p>
+              </div>
+
+              <!-- Role badge -->
+              <span class="role-badge"
+                    [style.background]="getRoleColor(user.role) + '20'"
+                    [style.color]="getRoleColor(user.role)">
+                {{ user.role }}
+              </span>
+
+              <!-- Status badge -->
+              <span class="status-badge"
+                    [class.active]="user.enabled"
+                    [class.inactive]="!user.enabled">
+                {{ user.enabled ? ts.t().users_active : ts.t().users_inactive }}
+              </span>
+
+              <!-- Actions -->
+              <div class="user-actions">
+                <button mat-icon-button
+                        [matTooltip]="ts.t().common_edit"
+                        (click)="openEditModal(user)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+
+                @if (user.enabled && user.email !== currentUserEmail) {
+                  <button mat-icon-button
+                          [matTooltip]="'Désactiver'"
+                          class="disable-btn"
+                          (click)="disableUser(user)">
+                    <mat-icon>block</mat-icon>
+                  </button>
+                }
+              </div>
+
+            </div>
+          }
+        </div>
+      }
+    }
+
+  </main>
+</div>
+
+<!-- Edit Modal -->
+@if (showEditModal()) {
+  <div class="modal-overlay" (click)="showEditModal.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <h2>Modifier l'utilisateur</h2>
+        <button mat-icon-button (click)="showEditModal.set(false)">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="modal-body">
+
+        <div class="field-group">
+          <label>Nom complet *</label>
+          <input type="text" [(ngModel)]="editFullName">
+        </div>
+
+        <div class="field-group">
+          <label>Rôle *</label>
+          <select [(ngModel)]="editRole">
+            @for (role of roles; track role) {
+              <option [value]="role">{{ role }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label>Statut</label>
+          <div class="toggle-group">
+            <label class="toggle">
+              <input type="checkbox" [(ngModel)]="editEnabled">
+              <span class="toggle-slider"></span>
+            </label>
+            <span>{{ editEnabled ? ts.t().users_active : ts.t().users_inactive }}</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="cancel-btn" (click)="showEditModal.set(false)">
+          {{ ts.t().common_cancel }}
+        </button>
+        <button class="confirm-btn" (click)="saveEdit()">
+          <mat-icon>save</mat-icon>
+          {{ ts.t().common_save }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+}

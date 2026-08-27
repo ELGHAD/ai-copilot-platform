@@ -1,0 +1,31 @@
+### IDE ###
+.idea/
+.vscode/
+*.iml
+
+### Backend - Spring Boot / Maven ###
+backend/**/target/
+backend/**/*.class
+backend/**/.mvn/
+backend/**/uploads/*
+!backend/**/uploads/.gitkeep
+
+### Frontend - Angular ###
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/*.log
+
+### RAG service - Python ###
+rag-service/venv/
+rag-service/__pycache__/
+rag-service/**/*.pyc
+rag-service/.env
+
+### Secrets globaux ###
+**/.env
+!**/.env.example
+
+### OS ###
+.DS_Store
+Thumbs.db

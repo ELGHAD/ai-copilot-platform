@@ -1,0 +1,123 @@
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+
+    <!-- Header -->
+    <div class="page-header">
+      <div>
+        <h1>{{ ts.t().dashboard_title }}</h1>
+        <p>{{ ts.t().dashboard_subtitle }}</p>
+      </div>
+      <button class="refresh-btn" (click)="loadStats()">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+
+    <!-- Loading -->
+    @if (isLoading()) {
+      <div class="loading-container">
+        <mat-spinner diameter="48"></mat-spinner>
+      </div>
+    }
+
+    <!-- Error -->
+    @if (error()) {
+      <div class="error-banner">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    }
+
+    <!-- Stats -->
+    @if (stats() && !isLoading()) {
+      <div class="stats-grid">
+
+        <div class="stat-card">
+          <div class="stat-icon" style="background: linear-gradient(135deg, #e94560, #c62828)">
+            <mat-icon>group</mat-icon>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ stats()!.totalUsers }}</span>
+            <span class="stat-label">{{ ts.t().dashboard_total_users }}</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon" style="background: linear-gradient(135deg, #0f3460, #1a1a2e)">
+            <mat-icon>folder</mat-icon>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ stats()!.totalDocuments }}</span>
+            <span class="stat-label">{{ ts.t().dashboard_total_docs }}</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon" style="background: linear-gradient(135deg, #2e7d32, #1b5e20)">
+            <mat-icon>check_circle</mat-icon>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ stats()!.activeDocuments }}</span>
+            <span class="stat-label">{{ ts.t().dashboard_active_docs }}</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon" style="background: linear-gradient(135deg, #f57c00, #e65100)">
+            <mat-icon>confirmation_number</mat-icon>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ (ticketCounts()?.open ?? 0) + (ticketCounts()?.inProgress ?? 0) }}</span>
+            <span class="stat-label">Tickets actifs</span>
+          </div>
+        </div>
+
+      </div>
+    }
+
+    <!-- Charts -->
+    @if (!isLoading() && stats() && ticketCounts()) {
+      <div class="section-title">Statistiques visuelles</div>
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>Répartition des rôles</h3>
+          <div class="chart-wrapper">
+            <canvas #rolesChart></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3>État des documents</h3>
+          <div class="chart-wrapper">
+            <canvas #docsChart></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3>Tickets par statut</h3>
+          <div class="chart-wrapper">
+            <canvas #ticketsChart></canvas>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Quick actions -->
+    @if (stats() && !isLoading()) {
+      <div class="section-title">Actions rapides</div>
+      <div class="quick-actions">
+        @for (action of quickActions; track action.route) {
+          <a class="action-card" [routerLink]="action.route">
+            <div class="action-icon" [style.background]="action.color">
+              <mat-icon>{{ action.icon }}</mat-icon>
+            </div>
+            <span>{{ action.label }}</span>
+            <mat-icon class="arrow">arrow_forward</mat-icon>
+          </a>
+        }
+      </div>
+    }
+
+  </main>
+</div>

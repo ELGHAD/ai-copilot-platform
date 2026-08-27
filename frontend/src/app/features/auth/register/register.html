@@ -1,0 +1,103 @@
+<div class="auth-container">
+  <mat-card class="auth-card">
+
+    <mat-card-header>
+      <div class="auth-logo">
+        <mat-icon>psychology</mat-icon>
+      </div>
+      <mat-card-title>Créer un compte</mat-card-title>
+      <mat-card-subtitle>Rejoignez ALTEN AI Copilot</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Nom complet</mat-label>
+          <input matInput
+                 type="text"
+                 formControlName="fullName"
+                 placeholder="Prénom Nom">
+          <mat-icon matPrefix>person</mat-icon>
+          @if (registerForm.get('fullName')?.hasError('required')) {
+            <mat-error>Le nom est requis</mat-error>
+          }
+          @if (registerForm.get('fullName')?.hasError('minlength')) {
+            <mat-error>Minimum 3 caractères</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Email</mat-label>
+          <input matInput
+                 type="email"
+                 formControlName="email"
+                 placeholder="votre@email.com">
+          <mat-icon matPrefix>email</mat-icon>
+          @if (registerForm.get('email')?.hasError('required')) {
+            <mat-error>L'email est requis</mat-error>
+          }
+          @if (registerForm.get('email')?.hasError('email')) {
+            <mat-error>Format d'email invalide</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Mot de passe</mat-label>
+          <input matInput
+                 [type]="hidePassword ? 'password' : 'text'"
+                 formControlName="password">
+          <mat-icon matPrefix>lock</mat-icon>
+          <button mat-icon-button matSuffix type="button"
+                  (click)="hidePassword = !hidePassword">
+            <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          @if (registerForm.get('password')?.hasError('required')) {
+            <mat-error>Le mot de passe est requis</mat-error>
+          }
+          @if (registerForm.get('password')?.hasError('minlength')) {
+            <mat-error>Minimum 8 caractères</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Rôle</mat-label>
+          <mat-select formControlName="role">
+            @for (role of roles; track role.value) {
+              <mat-option [value]="role.value">{{ role.label }}</mat-option>
+            }
+          </mat-select>
+          <mat-icon matPrefix>badge</mat-icon>
+        </mat-form-field>
+
+        @if (errorMessage) {
+          <div class="error-message">
+            <mat-icon>error_outline</mat-icon>
+            <span>{{ errorMessage }}</span>
+          </div>
+        }
+
+        <button mat-raised-button
+                color="primary"
+                type="submit"
+                class="full-width submit-btn"
+                [disabled]="registerForm.invalid || isLoading">
+          @if (isLoading) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            S'inscrire
+          }
+        </button>
+
+      </form>
+    </mat-card-content>
+
+    <mat-card-actions>
+      <p class="login-link">
+        Déjà un compte ?
+        <a routerLink="/auth/login">Se connecter</a>
+      </p>
+    </mat-card-actions>
+
+  </mat-card>
+</div>

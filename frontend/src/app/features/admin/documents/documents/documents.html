@@ -1,0 +1,269 @@
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+
+    <!-- Header -->
+    <div class="page-header">
+      <div>
+        <h1>{{ ts.t().docs_title }}</h1>
+        <p>{{ filteredDocuments.length }} document(s) trouvé(s)</p>
+      </div>
+      <button class="upload-btn" (click)="showUploadModal.set(true)">
+        <mat-icon>upload</mat-icon>
+        {{ ts.t().docs_upload }}
+      </button>
+    </div>
+
+    <!-- Success message -->
+    @if (successMessage()) {
+      <div class="success-banner">
+        <mat-icon>check_circle</mat-icon>
+        <span>{{ successMessage() }}</span>
+      </div>
+    }
+
+    <!-- Error -->
+    @if (error()) {
+      <div class="error-banner">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    }
+
+    <!-- Filter -->
+    <div class="filter-bar">
+      @for (option of filterOptions; track option) {
+        <button class="filter-btn"
+                [class.active]="selectedStatus() === option"
+                (click)="selectedStatus.set(option)">
+          {{ option === 'ALL' ? 'Tous' : option }}
+        </button>
+      }
+    </div>
+
+    <!-- Loading -->
+    @if (isLoading()) {
+      <div class="loading-container">
+        <mat-spinner diameter="48"></mat-spinner>
+      </div>
+    }
+
+    <!-- Documents grid -->
+    @if (!isLoading()) {
+      @if (filteredDocuments.length === 0) {
+        <div class="empty-state">
+          <mat-icon>folder_open</mat-icon>
+          <p>Aucun document trouvé</p>
+          <button class="upload-btn" (click)="showUploadModal.set(true)">
+            {{ ts.t().docs_upload }}
+          </button>
+        </div>
+      } @else {
+        <div class="documents-grid">
+          @for (doc of filteredDocuments; track doc.id) {
+            <div class="document-card">
+
+              <!-- File icon -->
+              <div class="doc-icon">
+                <mat-icon>
+                  {{ doc.contentType === 'application/pdf' ? 'picture_as_pdf' : 'description' }}
+                </mat-icon>
+              </div>
+
+              <!-- Info -->
+              <div class="doc-info">
+                <h3 class="doc-title">{{ doc.title }}</h3>
+                <p class="doc-filename">{{ doc.originalFileName }}</p>
+                <p class="doc-meta">
+                  {{ formatSize(doc.fileSize) }} •
+                  v{{ doc.version }} •
+                  {{ doc.roleAccess }}
+                </p>
+              </div>
+
+              <!-- Status badge -->
+              <span class="status-badge" [class]="getStatusClass(doc.status)">
+                {{ doc.status }}
+              </span>
+
+              <!-- Indexed badge -->
+              @if (doc.indexed) {
+                <span class="indexed-badge">
+                  <mat-icon>check</mat-icon> Indexé
+                </span>
+              } @else {
+                <span class="not-indexed-badge">
+                  <mat-icon>schedule</mat-icon> Non indexé
+                </span>
+              }
+
+              <!-- Actions -->
+              <div class="doc-actions">
+                <button mat-icon-button
+                        [matTooltip]="ts.t().common_edit"
+                        (click)="openEditModal(doc)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button
+                        [matTooltip]="ts.t().common_delete"
+                        class="delete-btn"
+                        (click)="deleteDocument(doc)">
+                  <mat-icon>archive</mat-icon>
+                </button>
+              </div>
+
+              <!-- Upload date -->
+              <p class="doc-date">
+                {{ doc.createdAt | date:'dd/MM/yyyy' }}
+              </p>
+
+            </div>
+          }
+        </div>
+      }
+    }
+
+  </main>
+</div>
+
+<!-- Upload Modal -->
+@if (showUploadModal()) {
+  <div class="modal-overlay" (click)="showUploadModal.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <h2>{{ ts.t().docs_upload }}</h2>
+        <button mat-icon-button (click)="showUploadModal.set(false)">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- File drop zone -->
+        <label class="file-drop-zone">
+          <input type="file"
+                 accept=".pdf,.doc,.docx"
+                 (change)="onFileSelected($event)"
+                 hidden>
+          @if (selectedFile) {
+            <mat-icon>check_circle</mat-icon>
+            <span>{{ selectedFile.name }}</span>
+            <small>{{ formatSize(selectedFile.size) }}</small>
+          } @else {
+            <mat-icon>cloud_upload</mat-icon>
+            <span>Cliquez pour sélectionner un fichier</span>
+            <small>PDF ou Word • Max 10MB</small>
+          }
+        </label>
+
+        @if (fileError) {
+          <p class="field-error">{{ fileError }}</p>
+        }
+
+        <!-- Title -->
+        <div class="field-group">
+          <label>Titre *</label>
+          <input type="text"
+                 [(ngModel)]="uploadTitle"
+                 placeholder="Titre du document">
+        </div>
+
+        <!-- Description -->
+        <div class="field-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="uploadDescription"
+                    placeholder="Description optionnelle"
+                    rows="3"></textarea>
+        </div>
+
+        <!-- Role access -->
+        <div class="field-group">
+          <label>Accès par rôle *</label>
+          <select [(ngModel)]="uploadRoleAccess">
+            @for (role of roles; track role) {
+              <option [value]="role">{{ role }}</option>
+            }
+          </select>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="cancel-btn" (click)="showUploadModal.set(false)">
+          {{ ts.t().common_cancel }}
+        </button>
+        <button class="confirm-btn"
+                [disabled]="!selectedFile || !uploadTitle || isUploading()"
+                (click)="uploadDocument()">
+          @if (isUploading()) {
+            <mat-spinner diameter="18"></mat-spinner>
+          } @else {
+            <mat-icon>upload</mat-icon>
+            {{ ts.t().docs_upload }}
+          }
+        </button>
+      </div>
+
+    </div>
+  </div>
+}
+
+<!-- Edit Modal -->
+@if (showEditModal()) {
+  <div class="modal-overlay" (click)="showEditModal.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <h2>{{ ts.t().common_edit }}</h2>
+        <button mat-icon-button (click)="showEditModal.set(false)">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="modal-body">
+
+        <div class="field-group">
+          <label>Titre *</label>
+          <input type="text" [(ngModel)]="editTitle">
+        </div>
+
+        <div class="field-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="editDescription" rows="3"></textarea>
+        </div>
+
+        <div class="field-group">
+          <label>Accès par rôle *</label>
+          <select [(ngModel)]="editRoleAccess">
+            @for (role of roles; track role) {
+              <option [value]="role">{{ role }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label>Statut *</label>
+          <select [(ngModel)]="editStatus">
+            @for (status of statuses; track status) {
+              <option [value]="status">{{ status }}</option>
+            }
+          </select>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="cancel-btn" (click)="showEditModal.set(false)">
+          {{ ts.t().common_cancel }}
+        </button>
+        <button class="confirm-btn" (click)="saveEdit()">
+          <mat-icon>save</mat-icon>
+          {{ ts.t().common_save }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+}

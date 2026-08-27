@@ -1,0 +1,536 @@
+<div class="chat-layout">
+
+  <!-- ─── Sidebar ─────────────────────────────────────────────────────────── -->
+  <aside class="chat-sidebar">
+
+    <!-- Logo -->
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+       <mat-icon>psychology</mat-icon>
+      </div>
+      <span>AI Copilot</span>
+    </div>
+
+    <!-- New conversation button -->
+    <button class="new-conv-btn" (click)="newConversation()">
+      <mat-icon>add</mat-icon>
+      {{ ts.t().chat_new }}
+    </button>
+
+    <!-- Mes tickets -->
+    <button class="my-tickets-btn" (click)="openMyTickets()">
+      <mat-icon>confirmation_number</mat-icon>
+      Mes tickets
+    </button>
+
+    <!-- Conversations list -->
+    <div class="conversations-list">
+      <p class="list-label">{{ ts.t().chat_history }}</p>
+
+      @if (conversations().length === 0) {
+        <p class="empty-convs">{{ ts.t().chat_empty }}</p>
+      }
+
+      @for (conv of conversations(); track conv.id) {
+        <div class="conv-item"
+             [class.active]="activeConversationId() === conv.id"
+             (click)="selectConversation(conv.id)">
+          <mat-icon class="conv-icon">chat_bubble_outline</mat-icon>
+          <div class="conv-info">
+            <span class="conv-title">{{ conv.title }}</span>
+            <span class="conv-meta">{{ conv.messageCount }} messages</span>
+          </div>
+          <button mat-icon-button
+                  class="delete-conv-btn"
+                  [matTooltip]="ts.t().common_delete"
+                  (click)="deleteConversation($event, conv.id)">
+            <mat-icon>delete_outline</mat-icon>
+          </button>
+        </div>
+      }
+    </div>
+
+    <div class="sidebar-spacer"></div>
+
+    <!-- Language toggle -->
+    <button class="lang-toggle" (click)="ts.toggleLanguage()">
+      <mat-icon>language</mat-icon>
+      <span>{{ ts.currentLang() === 'fr' ? 'EN' : 'FR' }}</span>
+    </button>
+
+    <!-- User profile -->
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">{{ userInitials }}</div>
+        <div class="user-details">
+          <span class="user-name">{{ user?.fullName }}</span>
+          <span class="user-role">{{ user?.role }}</span>
+        </div>
+      </div>
+      <button mat-icon-button
+              class="logout-btn"
+              [matTooltip]="ts.t().nav_logout"
+              (click)="authService.logout()">
+        <mat-icon>logout</mat-icon>
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- ─── Main chat area ──────────────────────────────────────────────────── -->
+  <main class="chat-main">
+
+    <!-- Error banner -->
+    @if (error()) {
+      <div class="error-banner">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    }
+
+    <!-- Messages area -->
+    <div class="messages-container" #messagesContainer>
+
+      <!-- Welcome screen -->
+      @if (messages().length === 0 && !isLoading()) {
+        <div class="welcome-screen">
+          <div class="welcome-icon">
+            <mat-icon>support_agent</mat-icon>
+
+          </div>
+       <h2>{{ ts.t().chat_welcome }}, {{ user?.fullName?.split(' ')?.[0] ?? '' }} 👋</h2>
+          <p>{{ ts.t().chat_welcome_sub }}</p>
+
+          <div class="suggestion-chips">
+            <button class="chip"
+                    (click)="question = 'Comment créer un accès VPN ?'; sendMessage()">
+              Comment créer un accès VPN ?
+            </button>
+            <button class="chip"
+                    (click)="question = 'Quelle est la procédure de congé ?'; sendMessage()">
+              Quelle est la procédure de congé ?
+            </button>
+            <button class="chip"
+                    (click)="question = 'Comment contacter le support IT ?'; sendMessage()">
+              Comment contacter le support IT ?
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- Loading messages -->
+      @if (isLoading()) {
+        <div class="loading-messages">
+          <mat-spinner diameter="32"></mat-spinner>
+        </div>
+      }
+
+      <!-- Messages -->
+      @for (message of messages(); track message.id) {
+        <div class="message-wrapper" [class.user-wrapper]="message.role === 'USER'">
+
+          <!-- Avatar -->
+          @if (message.role === 'ASSISTANT') {
+            <div class="avatar assistant-avatar">
+              <mat-icon>smart_toy</mat-icon>
+            </div>
+          }
+
+          <div class="message-content" [class.user-message]="message.role === 'USER'"
+               [class.assistant-message]="message.role === 'ASSISTANT'">
+
+            <!-- Message text -->
+            <p class="message-text">{{ message.content }}</p>
+
+            <!-- Sources (ASSISTANT only) -->
+           @if (message.role === 'ASSISTANT' && message.sources && message.sources.length > 0) {
+            <div class="sources-section">
+                <button class="sources-toggle"
+                        (click)="toggleSources(message.id)">
+                  <mat-icon>menu_book</mat-icon>
+                  {{ ts.t().chat_sources }} ({{ message.sources.length }})
+                  <mat-icon>
+                    {{ expandedSources.has(message.id) ? 'expand_less' : 'expand_more' }}
+                  </mat-icon>
+                </button>
+
+                @if (expandedSources.has(message.id)) {
+                  <div class="sources-list">
+                    @for (source of message.sources; track source.documentTitle) {
+                      <div class="source-item">
+                        <mat-icon>description</mat-icon>
+                        <div class="source-info">
+                          <span class="source-title">{{ source.documentTitle }}</span>
+                          <span class="source-page">Page {{ source.page }}</span>
+                          @if (source.excerpt) {
+                            <p class="source-excerpt">{{ source.excerpt }}</p>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Confidence score -->
+            @if (message.role === 'ASSISTANT' && message.confidenceScore > 0) {
+              <div class="confidence-score">
+                <mat-icon style="font-size: 14px; width: 14px; height: 14px;">
+                  verified
+                </mat-icon>
+                <span [style.color]="getConfidenceColor(message.confidenceScore)">
+                  {{ ts.t().chat_confidence }}: {{ (message.confidenceScore * 100).toFixed(0) }}%
+                </span>
+              </div>
+            }
+
+            <!-- Not satisfied button -->
+            @if (message.role === 'ASSISTANT') {
+              <button class="not-satisfied-btn"
+                      matTooltip="Créer un ticket auprès du support"
+                      (click)="openTicketModal(message)">
+                <mat-icon>flag</mat-icon>
+                Pas satisfait ? Créer un ticket
+              </button>
+            }
+
+          </div>
+
+          <!-- User avatar -->
+          @if (message.role === 'USER') {
+            <div class="avatar user-avatar-msg">
+              {{ userInitials }}
+            </div>
+          }
+
+        </div>
+      }
+
+      <!-- Sending indicator -->
+      @if (isSending()) {
+        <div class="message-wrapper">
+          <div class="avatar assistant-avatar">
+            <mat-icon>smart_toy</mat-icon>
+          </div>
+          <div class="assistant-message typing-indicator">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      }
+
+    </div>
+
+    <!-- Input area -->
+    <div class="input-area">
+   <div class="input-container">
+  <textarea
+    [(ngModel)]="question"
+    [placeholder]="ts.t().chat_placeholder"
+    (keydown)="onKeyDown($event)"
+    cdkTextareaAutosize
+    cdkAutosizeMinRows="1"
+    cdkAutosizeMaxRows="6"
+    [disabled]="isSending()">
+  </textarea>
+
+  <!-- Bouton micro -->
+  <button class="mic-btn"
+          [class.listening]="isListening()"
+          [matTooltip]="ts.t().chat_mic_tooltip"
+          [disabled]="isSending()"
+          (click)="toggleMic()">
+    <mat-icon>{{ isListening() ? 'mic' : 'mic_none' }}</mat-icon>
+  </button>
+
+  <button class="send-btn"
+          [disabled]="!question.trim() || isSending()"
+          (click)="sendMessage()">
+    @if (isSending()) {
+      <mat-spinner diameter="20"></mat-spinner>
+    } @else {
+      <mat-icon>send</mat-icon>
+    }
+  </button>
+</div>
+     <p class="input-hint">
+  Les réponses sont générées à partir des documents indexés et peuvent contenir des erreurs ou omissions.
+</p>  </div>
+
+  </main>
+
+  <!-- ─── Ticket creation modal ───────────────────────────────────────────── -->
+  @if (showTicketModal()) {
+    <div class="ticket-modal-overlay" (click)="closeTicketModal()">
+      <div class="ticket-modal" (click)="$event.stopPropagation()">
+
+        <button class="modal-close-btn" (click)="closeTicketModal()">
+          <mat-icon>close</mat-icon>
+        </button>
+
+        @if (ticketCreated()) {
+          <!-- Confirmation screen -->
+          <div class="ticket-confirmation">
+            <mat-icon class="confirm-icon">check_circle</mat-icon>
+            <h3>Ticket créé avec succès</h3>
+            <p>Numéro : <strong>{{ createdTicketNumber() }}</strong></p>
+            <p class="confirm-sub">Un administrateur va prendre en charge votre demande.</p>
+            <button class="modal-primary-btn" (click)="closeTicketModal()">Fermer</button>
+          </div>
+
+        } @else if (ticketStep() === 'choice') {
+          <!-- Step 1: choose ticket type -->
+          <h3>Comment souhaitez-vous décrire le problème ?</h3>
+          <div class="ticket-choice-cards">
+            <button class="ticket-choice-card" (click)="chooseTicketType('form')">
+              <mat-icon>description</mat-icon>
+              <span>Formulaire structuré</span>
+              <p>Ex : demande d'installation logicielle</p>
+            </button>
+            <button class="ticket-choice-card" (click)="chooseTicketType('freetext')">
+              <mat-icon>chat_bubble_outline</mat-icon>
+              <span>Message libre</span>
+              <p>Décrivez le problème avec vos propres mots</p>
+            </button>
+          </div>
+
+        } @else if (ticketStep() === 'freetext') {
+          <!-- Step 2a: free text form -->
+          <button class="back-btn" (click)="backToTicketChoice()">
+            <mat-icon>arrow_back</mat-icon> Retour
+          </button>
+          <h3>Décrire le problème</h3>
+
+          <label>Sujet</label>
+          <input type="text" [(ngModel)]="ticketSubject" placeholder="Ex : Réponse incomplète sur..." />
+
+          <label>Description</label>
+          <textarea [(ngModel)]="ticketFreeText" rows="5"
+                    placeholder="Expliquez ce qui ne va pas dans la réponse et ce dont vous avez besoin..."></textarea>
+
+          @if (ticketError()) {
+            <p class="ticket-error">{{ ticketError() }}</p>
+          }
+
+          <button class="modal-primary-btn"
+                  [disabled]="isCreatingTicket() || !ticketSubject.trim() || !ticketFreeText.trim()"
+                  (click)="submitFreeTextTicket()">
+            @if (isCreatingTicket()) {
+              <mat-spinner diameter="18"></mat-spinner>
+            } @else {
+              Envoyer le ticket
+            }
+          </button>
+
+        }       @else if (ticketStep() === 'categories') {
+          <!-- Step 2: category list -->
+          <button class="back-btn" (click)="backToTicketChoice()">
+            <mat-icon>arrow_back</mat-icon> Retour
+          </button>
+          <h3>Quel type de demande ?</h3>
+
+          @if (isLoadingCategories()) {
+            <div class="my-tickets-loading">
+              <mat-spinner diameter="32"></mat-spinner>
+            </div>
+          } @else {
+            <div class="ticket-choice-cards">
+              @for (key of categoryKeys(); track key) {
+                <button class="ticket-choice-card" (click)="selectCategory(key)">
+                  <mat-icon>{{ categoryMeta[key]?.icon ?? 'description' }}</mat-icon>
+                  <span>{{ categoryMeta[key]?.label ?? key }}</span>
+                  <p>{{ categoryMeta[key]?.description }}</p>
+                </button>
+              }
+            </div>
+          }
+
+        } @else if (ticketStep() === 'dynamicForm') {
+          <!-- Step 3: dynamic form built from the selected category's schema -->
+          <button class="back-btn" (click)="backToCategories()">
+            <mat-icon>arrow_back</mat-icon> Retour
+          </button>
+          <h3>{{ categoryMeta[selectedCategory()!]?.label }}</h3>
+
+          <label>Sujet</label>
+          <input type="text" [(ngModel)]="ticketSubject" placeholder="Ex : Résumé de la demande" />
+
+          @for (field of selectedCategoryFields(); track field.key) {
+            @switch (field.type) {
+              @case ('textarea') {
+                <label>{{ field.label }}{{ field.required ? ' *' : '' }}</label>
+                <textarea [(ngModel)]="dynamicFormData[field.key]" rows="3"
+                          [placeholder]="field.placeholder ?? ''"></textarea>
+              }
+              @case ('checkbox') {
+                <label class="checkbox-label">
+                  <input type="checkbox" [(ngModel)]="dynamicFormData[field.key]" />
+                  {{ field.label }}
+                </label>
+              }
+              @default {
+                <label>{{ field.label }}{{ field.required ? ' *' : '' }}</label>
+                <input type="text" [(ngModel)]="dynamicFormData[field.key]"
+                       [placeholder]="field.placeholder ?? ''" />
+              }
+            }
+          }
+
+          @if (ticketError()) {
+            <p class="ticket-error">{{ ticketError() }}</p>
+          }
+
+          <button class="modal-primary-btn"
+                  [disabled]="isCreatingTicket() || !ticketSubject.trim() || !isDynamicFormValid()"
+                  (click)="submitDynamicForm()">
+            @if (isCreatingTicket()) {
+              <mat-spinner diameter="18"></mat-spinner>
+            } @else {
+              Envoyer le ticket
+            }
+          </button>
+        }
+
+      </div>
+    </div>
+  }
+
+  <!-- ─── My tickets modal ────────────────────────────────────────────────── -->
+  @if (showMyTicketsModal()) {
+    <div class="ticket-modal-overlay" (click)="closeMyTicketsModal()">
+      <div class="ticket-modal my-tickets-modal" (click)="$event.stopPropagation()">
+
+        <button class="modal-close-btn" (click)="closeMyTicketsModal()">
+          <mat-icon>close</mat-icon>
+        </button>
+
+        @if (myTicketsView() === 'list') {
+          <h3>Mes tickets</h3>
+
+          @if (isLoadingMyTickets()) {
+            <div class="my-tickets-loading">
+              <mat-spinner diameter="32"></mat-spinner>
+            </div>
+          } @else if (myTickets().length === 0) {
+            <div class="my-tickets-empty">
+              <mat-icon>confirmation_number</mat-icon>
+              <p>Vous n'avez pas encore créé de ticket</p>
+            </div>
+          } @else {
+            <div class="my-tickets-list">
+              @for (ticket of myTickets(); track ticket.id) {
+                <div class="my-ticket-row" (click)="openMyTicketDetail(ticket)">
+                  <div class="my-ticket-main">
+                    <span class="my-ticket-number">{{ ticket.ticketNumber }}</span>
+                    <span class="my-ticket-subject">{{ ticket.subject }}</span>
+                  </div>
+                  <div class="my-ticket-meta">
+                    <span class="status-pill"
+                          [style.background]="getStatusColor(ticket.status) + '1a'"
+                          [style.color]="getStatusColor(ticket.status)">
+                      {{ ticket.status }}
+                    </span>
+                    <mat-icon>chevron_right</mat-icon>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+        } @else if (myTicketsView() === 'detail') {
+          <button class="back-btn" (click)="backToMyTicketsList()">
+            <mat-icon>arrow_back</mat-icon> Retour à mes tickets
+          </button>
+
+          @if (isLoadingMyTicketDetail()) {
+            <div class="my-tickets-loading">
+              <mat-spinner diameter="32"></mat-spinner>
+            </div>
+          } @else if (selectedMyTicket()) {
+            <div class="my-ticket-detail">
+              <div class="my-ticket-detail-header">
+                <h3>{{ selectedMyTicket()!.ticketNumber }}</h3>
+                <span class="status-pill"
+                      [style.background]="getStatusColor(selectedMyTicket()!.status) + '1a'"
+                      [style.color]="getStatusColor(selectedMyTicket()!.status)">
+                  {{ selectedMyTicket()!.status }}
+                </span>
+              </div>
+              <p class="my-ticket-detail-subject">{{ selectedMyTicket()!.subject }}</p>
+
+              <div class="timeline">
+                @for (activity of selectedMyTicket()!.activities; track activity.id) {
+                  <div class="timeline-entry" [class.system-entry]="activity.senderRole === SenderRole.SYSTEM">
+                    <div class="timeline-avatar" [class.admin-avatar]="activity.senderRole === SenderRole.ADMIN">
+                      {{ activity.senderRole === SenderRole.SYSTEM ? '⚙' : getInitials(activity.senderEmail) }}
+                    </div>
+                    <div class="timeline-content">
+                      <div class="timeline-meta">
+                        <span class="timeline-sender">
+                          {{ activity.senderRole === SenderRole.ADMIN ? 'Support' : activity.senderEmail }}
+                        </span>
+                        <span class="timeline-date">{{ activity.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                      </div>
+                      @if (activity.content) {
+                        <p class="timeline-text">{{ activity.content }}</p>
+                      }
+                      @if (activity.attachmentUrl) {
+                        <a [href]="getAttachmentUrl(activity.attachmentUrl)" target="_blank" class="timeline-attachment">
+                          <img [src]="getAttachmentUrl(activity.attachmentUrl)" alt="Pièce jointe">
+                        </a>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+
+              @if (selectedMyTicket()!.status !== TicketStatus.CLOSED) {
+
+                <!-- Attachment preview (staged, not sent yet) -->
+                @if (myTicketFilePreviewUrl()) {
+                  <div class="attachment-preview">
+                    <img [src]="myTicketFilePreviewUrl()" alt="Aperçu">
+                    <button class="remove-attachment-btn" (click)="clearMyTicketAttachment()" type="button">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                }
+
+                @if (myTicketAttachmentError()) {
+                  <p class="attachment-error">{{ myTicketAttachmentError() }}</p>
+                }
+
+                <div class="my-ticket-reply-box">
+                  <input type="file" #myTicketFileInput hidden accept="image/png,image/jpeg,image/gif,image/webp"
+                         (change)="onMyTicketFileSelected($event)">
+                  <button class="attach-btn" type="button"
+                          [matTooltip]="'Joindre une image'"
+                          (click)="myTicketFileInput.click()">
+                    <mat-icon>attach_file</mat-icon>
+                  </button>
+                  <textarea [(ngModel)]="myTicketReplyContent" rows="2"
+                            placeholder="Répondre au support..."></textarea>
+                  <button class="modal-primary-btn"
+                          [disabled]="isSendingMyTicketReply() || (!myTicketReplyContent.trim() && !myTicketSelectedFile())"
+                          (click)="sendMyTicketReply()">
+                    @if (isSendingMyTicketReply()) {
+                      <mat-spinner diameter="18"></mat-spinner>
+                    } @else {
+                      Envoyer
+                    }
+                  </button>
+                </div>
+              } @else {
+                <p class="my-ticket-closed-note">Ce ticket est clôturé.</p>
+              }
+            </div>
+          }
+        }
+
+      </div>
+    </div>
+  }
+
+</div>

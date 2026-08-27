@@ -1,0 +1,83 @@
+<div class="sidebar">
+
+  <!-- Logo -->
+  <div class="sidebar-logo">
+    <div class="logo-icon">
+      <mat-icon>psychology</mat-icon>
+    </div>
+    <span class="logo-text">AI Copilot</span>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="sidebar-nav">
+
+    <!-- Admin navigation -->
+    @if (user?.role === Role.ADMIN) {
+      <a class="nav-item"
+         routerLink="/admin/dashboard"
+         routerLinkActive="active">
+        <mat-icon>dashboard</mat-icon>
+        <span>{{ ts.t().nav_dashboard }}</span>
+      </a>
+
+      <a class="nav-item"
+         routerLink="/admin/documents"
+         routerLinkActive="active">
+        <mat-icon>folder</mat-icon>
+        <span>{{ ts.t().nav_documents }}</span>
+      </a>
+
+      <a class="nav-item"
+         routerLink="/admin/users"
+         routerLinkActive="active">
+        <mat-icon>group</mat-icon>
+        <span>{{ ts.t().nav_users }}</span>
+      </a>
+
+      <a class="nav-item"
+         routerLink="/admin/tickets"
+         routerLinkActive="active">
+        <mat-icon>confirmation_number</mat-icon>
+       <span>{{ ts.currentLang() === 'fr' ? 'Tickets' : 'Tickets' }}</span>
+      </a>
+    }
+
+    <!-- Expert/Operationnel navigation -->
+    @if (user?.role === Role.EXPERT || user?.role === Role.OPERATIONNEL) {
+      <a class="nav-item"
+         routerLink="/chat"
+         routerLinkActive="active">
+        <mat-icon>chat</mat-icon>
+        <span>{{ ts.t().nav_chat }}</span>
+      </a>
+    }
+
+  </nav>
+
+  <div class="sidebar-spacer"></div>
+
+  <!-- Language toggle -->
+  <button class="lang-toggle" (click)="toggleLanguage()">
+    <mat-icon>language</mat-icon>
+    <span>{{ ts.currentLang() === 'fr' ? 'EN' : 'FR' }}</span>
+  </button>
+
+  <!-- User profile + logout -->
+  <div class="sidebar-footer">
+    <div class="user-info">
+      <div class="user-avatar">{{ initials }}</div>
+      <div class="user-details">
+        <span class="user-name">{{ user?.fullName }}</span>
+        <span class="user-role">{{ user?.role }}</span>
+      </div>
+    </div>
+
+    <button mat-icon-button
+            class="logout-btn"
+            [matTooltip]="ts.t().nav_logout"
+            (click)="logout()">
+      <mat-icon>logout</mat-icon>
+    </button>
+  </div>
+
+</div>

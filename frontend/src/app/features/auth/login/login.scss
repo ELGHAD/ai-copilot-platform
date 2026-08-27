@@ -1,0 +1,148 @@
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  padding: 16px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 16px !important;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4) !important;
+
+  mat-card-header {
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 24px 16px;
+    text-align: center;
+
+    .auth-logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #e94560, #0f3460);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+
+      mat-icon {
+        font-size: 36px;
+        width: 36px;
+        height: 36px;
+        color: white;
+      }
+    }
+
+    mat-card-title {
+      font-size: 24px !important;
+      font-weight: 700 !important;
+      color: #1a1a2e;
+    }
+
+    mat-card-subtitle {
+      font-size: 14px !important;
+      margin-top: 4px !important;
+    }
+  }
+
+  mat-card-content {
+    padding: 16px 24px !important;
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+  }
+
+  mat-card-actions {
+    padding: 8px 24px 24px !important;
+    text-align: center;
+  }
+}
+
+.full-width {
+  width: 100%;
+}
+
+.submit-btn {
+  height: 48px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-top: 8px;
+  border-radius: 8px !important;
+
+  mat-spinner {
+    display: inline-block;
+  }
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #ffebee;
+  border-radius: 8px;
+  color: #c62828;
+  font-size: 14px;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.register-link {
+  color: #666;
+  font-size: 14px;
+  margin: 0;
+
+  a {
+    color: #e94560;
+    text-decoration: none;
+    font-weight: 600;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+.alten-logo {
+  width: 120px;
+  height: auto;
+  margin-bottom: 1rem;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #fdecea;
+  border: 1px solid #f5c2c0;
+  border-radius: 8px;
+  color: #c62828;
+  font-size: 14px;
+  font-weight: 500;
+  animation: shake 0.3s ease-in-out;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}

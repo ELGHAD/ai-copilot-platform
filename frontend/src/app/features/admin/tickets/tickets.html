@@ -1,0 +1,234 @@
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+
+    <!-- Header -->
+    <div class="page-header">
+      <div>
+        <h1>Gestion des tickets</h1>
+        <p>{{ filteredTickets.length }} ticket(s) trouvé(s)</p>
+      </div>
+    </div>
+
+    <!-- Success message -->
+    @if (successMessage()) {
+      <div class="success-banner">
+        <mat-icon>check_circle</mat-icon>
+        <span>{{ successMessage() }}</span>
+      </div>
+    }
+
+    <!-- Error -->
+    @if (error()) {
+      <div class="error-banner">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    }
+
+    <!-- Filter -->
+    <div class="filter-bar">
+      @for (option of filterOptions; track option) {
+        <button class="filter-btn"
+                [class.active]="selectedStatus() === option"
+                (click)="selectedStatus.set(option)">
+          {{ option === 'ALL' ? 'Tous' : option }}
+        </button>
+      }
+    </div>
+
+    <!-- Loading -->
+    @if (isLoading()) {
+      <div class="loading-container">
+        <mat-spinner diameter="48"></mat-spinner>
+      </div>
+    }
+
+    <!-- Tickets table -->
+    @if (!isLoading()) {
+      @if (filteredTickets.length === 0) {
+        <div class="empty-state">
+          <mat-icon>confirmation_number</mat-icon>
+          <p>Aucun ticket trouvé</p>
+        </div>
+      } @else {
+       <div class="table-card">
+<table class="tickets-table">
+  <colgroup>
+    <col style="width: 10%">
+    <col style="width: 23%">
+    <col style="width: 27%">
+    <col style="width: 13%">
+    <col style="width: 12%">
+    <col style="width: 12%">
+    <col style="width: 3%">
+  </colgroup>
+  <thead>
+    <tr>
+      <th class="sortable" (click)="sortBy('ticketNumber')">
+        N°
+        @if (sortColumn() === 'ticketNumber') {
+          <mat-icon class="sort-icon">{{ sortDirection() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+        }
+      </th>
+      <th>Email</th>
+      <th>Sujet</th>
+      <th>Type</th>
+      <th>Statut</th>
+      <th class="sortable" (click)="sortBy('createdAt')">
+        Date
+        @if (sortColumn() === 'createdAt') {
+          <mat-icon class="sort-icon">{{ sortDirection() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+        }
+      </th>
+      <th class="col-action"></th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (ticket of filteredTickets; track ticket.id) {
+      <tr (click)="openDetail(ticket)"
+          [style.border-left-color]="getStatusColor(ticket.status)">
+        <td class="cell-number">{{ ticket.ticketNumber }}</td>
+        <td class="cell-email" [matTooltip]="ticket.requesterName">{{ ticket.requesterEmail }}</td>
+        <td class="cell-subject">{{ ticket.subject }}</td>
+        <td>
+              <span class="type-chip">
+      {{ getCategoryLabel(ticket.ticketType) }}
+    </span>
+        </td>
+        <td>
+          <span class="status-pill"
+                [style.background]="getStatusColor(ticket.status) + '1a'"
+                [style.color]="getStatusColor(ticket.status)">
+            {{ ticket.status }}
+          </span>
+        </td>
+        <td class="cell-date">{{ ticket.createdAt | date:'dd/MM/yy HH:mm' }}</td>
+        <td class="cell-action">
+          <mat-icon>chevron_right</mat-icon>
+        </td>
+      </tr>
+    }
+  </tbody>
+</table>
+</div>
+      }
+    }
+
+  </main>
+</div>
+
+<!-- Detail / Timeline Modal -->
+@if (showDetailModal()) {
+  <div class="modal-overlay" (click)="closeDetail()">
+    <div class="modal ticket-detail-modal" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <h2>{{ selectedTicket()?.ticketNumber ?? '...' }}</h2>
+        <button mat-icon-button (click)="closeDetail()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      @if (isLoadingDetail()) {
+        <div class="loading-container">
+          <mat-spinner diameter="40"></mat-spinner>
+        </div>
+      } @else if (selectedTicket()) {
+        <div class="modal-body ticket-detail-body">
+
+          <!-- Ticket summary info -->
+          <div class="ticket-summary-block">
+            <p><strong>Sujet :</strong> {{ selectedTicket()!.subject }}</p>
+            <p><strong>Demandeur :</strong> {{ selectedTicket()!.requesterName }} ({{ selectedTicket()!.requesterEmail }}) — {{ selectedTicket()!.requesterRole }}</p>
+
+                        @if (selectedTicket()!.ticketType === TicketType.FREE_TEXT) {
+              <p><strong>Description :</strong> {{ selectedTicket()!.freeTextContent }}</p>
+            } @else {
+              <div class="form-details">
+                @for (entry of formDataEntries(selectedTicket()!); track entry.label) {
+                  <p><strong>{{ entry.label }} :</strong> {{ entry.value }}</p>
+                }
+              </div>
+            }
+
+            <div class="status-actions">
+              <span>Statut :</span>
+              <select [ngModel]="selectedTicket()!.status"
+                      (ngModelChange)="changeStatus($event)">
+                <option [value]="TicketStatus.OPEN">OPEN</option>
+                <option [value]="TicketStatus.IN_PROGRESS">IN_PROGRESS</option>
+                <option [value]="TicketStatus.CLOSED">CLOSED</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Timeline -->
+          <div class="timeline">
+            @for (activity of selectedTicket()!.activities; track activity.id) {
+              <div class="timeline-entry" [class.system-entry]="activity.senderRole === SenderRole.SYSTEM">
+                <div class="timeline-avatar" [class.admin-avatar]="activity.senderRole === SenderRole.ADMIN">
+                  {{ activity.senderRole === SenderRole.SYSTEM ? '⚙' : getInitials(activity.senderEmail) }}
+                </div>
+                <div class="timeline-content">
+                  <div class="timeline-meta">
+                    <span class="timeline-sender">{{ activity.senderEmail }}</span>
+                    <span class="timeline-date">{{ activity.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                  </div>
+                  @if (activity.content) {
+                    <p class="timeline-text">{{ activity.content }}</p>
+                  }
+                  @if (activity.attachmentUrl) {
+                    <a [href]="getAttachmentUrl(activity.attachmentUrl)" target="_blank" class="timeline-attachment">
+                      <img [src]="getAttachmentUrl(activity.attachmentUrl)" alt="Pièce jointe">
+                    </a>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Attachment preview (staged, not sent yet) -->
+          @if (filePreviewUrl()) {
+            <div class="attachment-preview">
+              <img [src]="filePreviewUrl()" alt="Aperçu">
+              <button class="remove-attachment-btn" (click)="clearSelectedFile()" type="button">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          }
+
+          @if (attachmentError()) {
+            <p class="attachment-error">{{ attachmentError() }}</p>
+          }
+
+          <!-- Reply box -->
+          <div class="reply-box">
+            <input type="file" #fileInput hidden accept="image/png,image/jpeg,image/gif,image/webp"
+                   (change)="onFileSelected($event)">
+            <button class="attach-btn" type="button"
+                    [matTooltip]="'Joindre une image'"
+                    (click)="fileInput.click()">
+              <mat-icon>attach_file</mat-icon>
+            </button>
+            <textarea [(ngModel)]="replyContent" rows="3"
+                      placeholder="Répondre au ticket..."></textarea>
+            <button class="confirm-btn"
+                    [disabled]="isReplying() || (!replyContent.trim() && !selectedFile())"
+                    (click)="sendReply()">
+              @if (isReplying()) {
+                <mat-spinner diameter="16"></mat-spinner>
+              } @else {
+                <mat-icon>send</mat-icon>
+              }
+              Répondre
+            </button>
+          </div>
+
+        </div>
+      }
+
+    </div>
+  </div>
+}
