@@ -1,0 +1,24 @@
+{
+  "//": [
+    "Angular dev-server proxy. Everything the app calls goes through the gateway",
+    "on :8080 instead of hitting the individual services on :8081-:8084.",
+    "",
+    "Because the browser now only ever talks to localhost:4200, requests are",
+    "same-origin and CORS is not involved in development at all.",
+    "",
+    "The gateway needs routes for every prefix listed here - /api/tickets/** and",
+    "/uploads/** were added for exactly this reason."
+  ],
+  "/api": {
+    "target": "http://localhost:8080",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "warn"
+  },
+  "/uploads": {
+    "target": "http://localhost:8080",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "warn"
+  }
+}

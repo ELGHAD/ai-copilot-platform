@@ -1,0 +1,61 @@
+# Databases only.
+#
+# The application services (5x Spring Boot, rag-service, Angular) run natively
+# via ./dev.sh so that Spring devtools restarts and ng serve HMR keep working.
+# This file exists because the main application database was previously not
+# defined anywhere — only the RAG vector database was.
+#
+#   docker compose up -d        start both databases
+#   docker compose ps           show health
+#   docker compose down         stop (data survives in named volumes)
+#   docker compose down -v      stop AND delete all data
+#
+# Supersedes rag-service/docker-compose.yml — do not run both, they would
+# both try to bind port 5435.
+
+services:
+  # Shared by auth-service, user-service, document-service, chat-service.
+  postgres-app:
+    image: postgres:16
+    container_name: alten-postgres-app
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${APP_DB_NAME:-alten_copilot}
+    ports:
+      - "${APP_DB_PORT:-5433}:5432"
+    volumes:
+      - postgres_app_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # Vector store for rag-service. pgvector image, `vector` extension created by
+  # the init script below.
+  postgres-vector:
+    image: pgvector/pgvector:pg16
+    container_name: alten-postgres-vector
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${VECTOR_DB_NAME:-rag_db}
+    ports:
+      - "${VECTOR_DB_PORT:-5435}:5432"
+    volumes:
+      - postgres_vector_data:/var/lib/postgresql/data
+      - ./docker/init-vector.sql:/docker-entrypoint-initdb.d/10-init-vector.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  postgres_app_data:
+  postgres_vector_data:

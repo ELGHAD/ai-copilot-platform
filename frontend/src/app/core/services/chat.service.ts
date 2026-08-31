@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface SourceReference {
   documentTitle: string;
@@ -52,7 +53,7 @@ export interface ChatRequest {
 export class ChatService {
 
   private http = inject(HttpClient);
-  private readonly BASE_URL = 'http://localhost:8084/api/chat';
+  private readonly BASE_URL = `${environment.apiBaseUrl}/api/chat`;
 
   /**
    * Sends a question to the RAG pipeline.

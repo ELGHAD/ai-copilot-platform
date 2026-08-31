@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface DocumentResponse {
   id: number;
@@ -35,7 +36,7 @@ export interface DocumentUpdateRequest {
 export class DocumentService {
 
   private http = inject(HttpClient);
-  private readonly BASE_URL = 'http://localhost:8083/api/documents';
+  private readonly BASE_URL = `${environment.apiBaseUrl}/api/documents`;
 
   /**
    * Fetches all documents.

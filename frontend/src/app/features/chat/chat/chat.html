@@ -156,7 +156,10 @@
 
                 @if (expandedSources.has(message.id)) {
                   <div class="sources-list">
-                    @for (source of message.sources; track source.documentTitle) {
+                    <!-- Tracked by index: several chunks of the SAME document are
+                         normal (one per page), so documentTitle is not unique and
+                         Angular rejects duplicate track keys. -->
+                    @for (source of message.sources; track $index) {
                       <div class="source-item">
                         <mat-icon>description</mat-icon>
                         <div class="source-info">

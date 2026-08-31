@@ -1,7 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -32,7 +32,7 @@ import { AuthService } from '../../../core/services/auth';
   templateUrl: './login.html',
   styleUrl: './login.scss'
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private resolveErrorMessage(err: any): string {
   switch (err.status) {
     case 401: return 'Email ou mot de passe incorrect';
@@ -44,6 +44,7 @@ export class LoginComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   /** Controls password visibility toggle */
   hidePassword = true;
@@ -58,6 +59,17 @@ export class LoginComponent {
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(8)]]
   });
+
+  /**
+   * The auth interceptor redirects here with ?expired=1 when a request comes
+   * back 401, so the user is told their session ran out instead of being
+   * silently dumped on the login page.
+   */
+  ngOnInit(): void {
+    if (this.route.snapshot.queryParamMap.get('expired') === '1') {
+      this.errorMessage = 'Votre session a expiré. Veuillez vous reconnecter.';
+    }
+  }
 
   /**
    * Submits the login form.

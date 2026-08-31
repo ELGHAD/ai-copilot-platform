@@ -64,59 +64,61 @@
           @for (doc of filteredDocuments; track doc.id) {
             <div class="document-card">
 
-              <!-- File icon -->
-              <div class="doc-icon">
-                <mat-icon>
-                  {{ doc.contentType === 'application/pdf' ? 'picture_as_pdf' : 'description' }}
-                </mat-icon>
-              </div>
+              <!-- Top: icon + title block + status -->
+              <div class="card-top">
+                <div class="doc-icon">
+                  <mat-icon>
+                    {{ doc.contentType === 'application/pdf' ? 'picture_as_pdf' : 'description' }}
+                  </mat-icon>
+                </div>
 
-              <!-- Info -->
-              <div class="doc-info">
-                <h3 class="doc-title">{{ doc.title }}</h3>
-                <p class="doc-filename">{{ doc.originalFileName }}</p>
-                <p class="doc-meta">
-                  {{ formatSize(doc.fileSize) }} •
-                  v{{ doc.version }} •
-                  {{ doc.roleAccess }}
-                </p>
-              </div>
+                <div class="doc-info">
+                  <h3 class="doc-title" [title]="doc.title">{{ doc.title }}</h3>
+                  <p class="doc-filename" [title]="doc.originalFileName">{{ doc.originalFileName }}</p>
+                </div>
 
-              <!-- Status badge -->
-              <span class="status-badge" [class]="getStatusClass(doc.status)">
-                {{ doc.status }}
-              </span>
-
-              <!-- Indexed badge -->
-              @if (doc.indexed) {
-                <span class="indexed-badge">
-                  <mat-icon>check</mat-icon> Indexé
+                <span class="status-badge" [class]="getStatusClass(doc.status)">
+                  {{ doc.status }}
                 </span>
-              } @else {
-                <span class="not-indexed-badge">
-                  <mat-icon>schedule</mat-icon> Non indexé
-                </span>
-              }
-
-              <!-- Actions -->
-              <div class="doc-actions">
-                <button mat-icon-button
-                        [matTooltip]="ts.t().common_edit"
-                        (click)="openEditModal(doc)">
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button mat-icon-button
-                        [matTooltip]="ts.t().common_delete"
-                        class="delete-btn"
-                        (click)="deleteDocument(doc)">
-                  <mat-icon>archive</mat-icon>
-                </button>
               </div>
 
-              <!-- Upload date -->
-              <p class="doc-date">
-                {{ doc.createdAt | date:'dd/MM/yyyy' }}
-              </p>
+              <!-- Meta chips -->
+              <div class="doc-meta">
+                <span class="meta-chip">{{ formatSize(doc.fileSize) }}</span>
+                <span class="meta-chip">v{{ doc.version }}</span>
+                <span class="meta-chip">{{ doc.roleAccess }}</span>
+                @if (doc.indexed) {
+                  <span class="meta-chip indexed">
+                    <mat-icon>check</mat-icon> Indexé
+                  </span>
+                } @else {
+                  <span class="meta-chip not-indexed">
+                    <mat-icon>schedule</mat-icon> Non indexé
+                  </span>
+                }
+              </div>
+
+              <!-- Footer: date + actions -->
+              <div class="card-footer">
+                <span class="doc-date">
+                  <mat-icon>calendar_today</mat-icon>
+                  {{ doc.createdAt | date:'dd/MM/yyyy' }}
+                </span>
+
+                <div class="doc-actions">
+                  <button mat-icon-button
+                          [matTooltip]="ts.t().common_edit"
+                          (click)="openEditModal(doc)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button
+                          [matTooltip]="ts.t().common_delete"
+                          class="delete-btn"
+                          (click)="deleteDocument(doc)">
+                    <mat-icon>archive</mat-icon>
+                  </button>
+                </div>
+              </div>
 
             </div>
           }

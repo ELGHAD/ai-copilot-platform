@@ -30,6 +30,21 @@ async def lifespan(app: FastAPI):
     """
     logger.info("Démarrage du RAG Service...")
 
+    # Vérification de la clé OpenAI AVANT d'accepter du trafic.
+    # Sans ce contrôle, le service démarrait normalement et n'échouait qu'au
+    # premier appel /chat/, ce qui donnait une erreur 500 opaque très loin de
+    # la cause réelle.
+    if not settings.has_openai_credentials:
+        message = settings.credentials_error()
+        if settings.use_local_fallback:
+            logger.warning(
+                "USE_LOCAL_FALLBACK=true — démarrage sans clé OpenAI. "
+                "Les endpoints /chat/ et l'indexation échoueront.\n%s", message
+            )
+        else:
+            logger.error("Configuration invalide :\n%s", message)
+            raise RuntimeError(message)
+
     try:
         init_database()
         logger.info("RAG Service prêt ✓")

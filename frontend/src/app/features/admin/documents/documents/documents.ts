@@ -60,7 +60,7 @@ export class DocumentsComponent implements OnInit {
   editRoleAccess = '';
   editStatus: 'ACTIVE' | 'OBSOLETE' | 'ARCHIVED' = 'ACTIVE';
 
-  roles = ['COMMUN', 'OPERATIONNEL', 'EXPERT', 'ADMIN'];
+  roles = ['COMMUN', 'OPERATIONNEL', 'EXPERT'];
   statuses = ['ACTIVE', 'OBSOLETE', 'ARCHIVED'];
   filterOptions = ['ALL', 'ACTIVE', 'OBSOLETE', 'ARCHIVED'];
 

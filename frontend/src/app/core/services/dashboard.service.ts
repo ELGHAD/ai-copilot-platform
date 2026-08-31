@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, forkJoin, map } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface DashboardStats {
   totalUsers: number;
@@ -25,8 +26,8 @@ export class DashboardService {
 
   private http = inject(HttpClient);
 
-  private readonly USER_STATS_URL = 'http://localhost:8082/api/users/stats';
-  private readonly DOC_STATS_URL = 'http://localhost:8083/api/documents/stats';
+  private readonly USER_STATS_URL = `${environment.apiBaseUrl}/api/users/stats`;
+  private readonly DOC_STATS_URL = `${environment.apiBaseUrl}/api/documents/stats`;
 
   /**
    * Fetches user and document stats in parallel using forkJoin.

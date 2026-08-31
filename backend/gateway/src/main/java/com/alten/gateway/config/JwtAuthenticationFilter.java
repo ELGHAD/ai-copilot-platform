@@ -31,7 +31,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     /** Endpoints that do not require a JWT token */
     private static final List<String> PUBLIC_ENDPOINTS = List.of(
             "/api/auth/register",
-            "/api/auth/login"
+            "/api/auth/login",
+            // Ticket attachments are loaded by the browser as <img src="/uploads/...">.
+            // A plain image request carries no Authorization header, so requiring a
+            // token here would make every attachment render as a broken image.
+            // chat-service also permits these without auth (see its SecurityConfig).
+            "/uploads/"
     );
 
     @Override

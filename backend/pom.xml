@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.alten</groupId>
+	<artifactId>backend</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>pom</packaging>
+
+	<name>ALTEN AI Copilot :: backend</name>
+	<description>
+		Aggregator for the backend microservices. This is a pure aggregator: each
+		module keeps spring-boot-starter-parent as its own parent, so building a
+		module on its own (cd auth-service &amp;&amp; ./mvnw ...) still works exactly
+		as before. This pom only lets you build or test all five at once:
+
+		  ./mvnw -f backend install -DskipTests
+		  ./mvnw -f backend test
+		  ./mvnw -f backend -pl auth-service spring-boot:run
+	</description>
+
+	<modules>
+		<module>gateway</module>
+		<module>auth-service</module>
+		<module>user-service</module>
+		<module>document-service</module>
+		<module>chat-service</module>
+	</modules>
+</project>

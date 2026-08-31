@@ -15,7 +15,11 @@ def get_rag_chain() -> RAGChain:
     return RAGChain(vector_store)
 
 
+# Les deux formes sont servies directement. Sans la variante sans slash, un POST
+# sur /chat renvoie une redirection 307 que la plupart des clients HTTP ne suivent
+# pas pour un POST — l'appelant reçoit alors un corps vide au lieu d'une réponse.
 @router.post("/", response_model=ChatResponse)
+@router.post("", response_model=ChatResponse, include_in_schema=False)
 async def chat(
     request: ChatRequest,
     rag_chain: RAGChain = Depends(get_rag_chain)

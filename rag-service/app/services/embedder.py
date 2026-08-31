@@ -18,11 +18,26 @@ class VectorStoreManager:
         un fallback local pour que le service reste utilisable.
         """
         if settings.has_openai_credentials and not settings.use_local_fallback:
-            self.embeddings = OpenAIEmbeddings(
-                model=settings.embedding_model,
-                api_key=settings.openai_api_key
+            kwargs = {
+                "model": settings.embedding_model,
+                "api_key": settings.openai_api_key,
+                # Cf. Settings.should_check_embedding_ctx_length : les passerelles
+                # compatibles OpenAI refusent généralement les tableaux de tokens.
+                "check_embedding_ctx_length": settings.should_check_embedding_ctx_length,
+            }
+
+            # base_url n'est transmis que s'il est défini, pour ne pas écraser
+            # la valeur par défaut du SDK (api.openai.com) avec une chaîne vide.
+            base_url = settings.effective_embedding_base_url
+            if base_url:
+                kwargs["base_url"] = base_url
+
+            self.embeddings = OpenAIEmbeddings(**kwargs)
+            logger.info(
+                "VectorStore initialisé avec embeddings '%s' via %s",
+                settings.embedding_model,
+                base_url or "api.openai.com (défaut)"
             )
-            logger.info("VectorStore initialisé avec OpenAI embeddings")
         else:
             self.embeddings = FakeEmbeddings(size=1536)
             logger.warning(
@@ -81,7 +96,28 @@ class VectorStoreManager:
             logger.error(f"Erreur suppression document {document_id} : {e}")
             raise
 
-    def get_retriever(self):
+    @staticmethod
+    def role_filter(role: str | None) -> dict | None:
+        """
+        Traduit un rôle applicatif en filtre de métadonnées pgvector.
+
+        Les chunks portent 'role_access' (cf. chunker.chunk) : COMMUN, ADMIN,
+        EXPERT ou OPERATIONNEL. Un utilisateur voit les documents communs plus
+        ceux réservés à son propre rôle ; ADMIN voit tout.
+
+        Retourne None quand aucun filtre ne doit être appliqué.
+        """
+        if not role or not role.strip():
+            # Rôle inconnu → on ne montre que ce qui est explicitement public.
+            return {"role_access": {"$in": ["COMMUN"]}}
+
+        normalized = role.strip().upper().replace("ROLE_", "")
+        if normalized == "ADMIN":
+            return None
+
+        return {"role_access": {"$in": ["COMMUN", normalized]}}
+
+    def get_retriever(self, role: str | None = None):
         """
         Retourne un retriever configuré pour récupérer les chunks
         les plus pertinents via similarité cosinus.
@@ -89,14 +125,22 @@ class VectorStoreManager:
         search_type='mmr' : Maximum Marginal Relevance
         → Évite les chunks redondants dans les résultats
         → Meilleure diversité = meilleure réponse finale
+
+        'role' restreint la recherche aux documents visibles par ce rôle.
         """
+        search_kwargs = {
+            "k": settings.max_retrieved_docs,
+            "fetch_k": settings.max_retrieved_docs * 3,
+            "lambda_mult": 0.7
+        }
+
+        metadata_filter = self.role_filter(role)
+        if metadata_filter is not None:
+            search_kwargs["filter"] = metadata_filter
+
         return self.vector_store.as_retriever(
             search_type="mmr",
-            search_kwargs={
-                "k": settings.max_retrieved_docs,
-                "fetch_k": settings.max_retrieved_docs * 3,
-                "lambda_mult": 0.7
-            }
+            search_kwargs=search_kwargs
         )
 
     def similarity_search(self, query: str, k: int = None) -> list[Document]:

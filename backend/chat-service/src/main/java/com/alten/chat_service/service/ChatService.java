@@ -162,13 +162,21 @@ public class ChatService {
                     "session_id", ""
             );
 
-            return ragWebClient.post()
-                    .uri("/chat")
+            // The trailing slash is required. The FastAPI route is registered as
+            // "/chat/" (APIRouter prefix "/chat" + path "/"), so a POST to "/chat"
+            // gets a 307 redirect. WebClient does not follow redirects by default,
+            // so the body came back empty and deserialized to null.
+            RagResponse ragResponse = ragWebClient.post()
+                    .uri("/chat/")
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestBody)
                     .retrieve()
                     .onStatus(
-                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            // 3xx included on purpose: an unfollowed redirect is not an
+                            // answer, and surfacing it beats silently producing a null.
+                            status -> status.is3xxRedirection()
+                                    || status.is4xxClientError()
+                                    || status.is5xxServerError(),
                             response -> response.bodyToMono(String.class)
                                     .defaultIfEmpty("no body")
                                     .map(body -> new RagServiceException(
@@ -176,6 +184,15 @@ public class ChatService {
                     )
                     .bodyToMono(RagResponse.class)
                     .block();
+
+            // An empty body yields an empty Mono, so block() returns null. Without
+            // this guard the null escapes into ask() and NPEs on getSources().
+            if (ragResponse == null) {
+                throw new RagServiceException(
+                        "RAG service returned an empty response body");
+            }
+
+            return ragResponse;
 
         } catch (RagServiceException e) {
             throw e;

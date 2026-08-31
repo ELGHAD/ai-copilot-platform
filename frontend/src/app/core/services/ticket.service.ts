@@ -10,6 +10,7 @@ import {
   TicketStatus,
   TicketCategorySchemas
 } from '../models/ticket.model';
+import { environment } from '../../../environments/environment';
 
 /**
  * Service that communicates with chat-service's ticket endpoints.
@@ -22,11 +23,13 @@ import {
 export class TicketService {
 
   private http = inject(HttpClient);
-  private readonly BASE_URL = 'http://localhost:8084/api/tickets';
+  private readonly BASE_URL = `${environment.apiBaseUrl}/api/tickets`;
 
-  // Root of chat-service, used to resolve relative attachment URLs returned by the backend
-  // (e.g. "/uploads/tickets/12/abc.png" -> "http://localhost:8084/uploads/tickets/12/abc.png")
-  readonly FILES_BASE_URL = 'http://localhost:8084';
+  // Prefix for the relative attachment URLs the backend returns
+  // (e.g. "/uploads/tickets/12/abc.png"). Empty in development, so the path is
+  // used as-is and the dev-server proxy forwards /uploads to the gateway, which
+  // routes it on to chat-service.
+  readonly FILES_BASE_URL = environment.apiBaseUrl;
 
   /**
    * Creates a new ticket (form-based or free text).

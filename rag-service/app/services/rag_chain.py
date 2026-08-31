@@ -1,7 +1,6 @@
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import StrOutputParser
-from langchain.schema.runnable import RunnablePassthrough, RunnableParallel
 from langchain.schema import Document
 from app.config import get_settings
 from app.services.embedder import VectorStoreManager
@@ -41,7 +40,6 @@ class RAGChain:
         Initialise la chaîne RAG avec un mode OpenAI ou un mode local de secours.
         """
         self.vector_store_manager = vector_store_manager
-        self.retriever = vector_store_manager.get_retriever()
         self.use_fallback_llm = settings.use_local_fallback or not settings.has_openai_credentials
 
         if self.use_fallback_llm:
@@ -53,12 +51,19 @@ class RAGChain:
                 "pour la génération de réponse."
             )
         else:
-            self.llm = ChatOpenAI(
-                model=settings.llm_model,
-                temperature=settings.llm_temperature,
-                api_key=settings.openai_api_key,
-                max_tokens=1500
-            )
+            llm_kwargs = {
+                "model": settings.llm_model,
+                "temperature": settings.llm_temperature,
+                "api_key": settings.openai_api_key,
+                "max_tokens": 1500,
+            }
+
+            # Transmis uniquement si défini, sinon le SDK utilise api.openai.com.
+            llm_base_url = settings.effective_llm_base_url
+            if llm_base_url:
+                llm_kwargs["base_url"] = llm_base_url
+
+            self.llm = ChatOpenAI(**llm_kwargs)
 
             self.prompt = ChatPromptTemplate.from_messages([
                 ("system", SYSTEM_PROMPT),
@@ -68,51 +73,49 @@ class RAGChain:
             self.chain = self._build_chain()
 
         logger.info(
-            f"RAGChain initialisée — "
-            f"modèle: {settings.llm_model} — "
-            f"fallback: {'oui' if self.use_fallback_llm else 'non'}"
+            "RAGChain initialisée — modèle: %s — endpoint: %s — fallback: %s",
+            settings.llm_model,
+            settings.effective_llm_base_url or "api.openai.com (défaut)",
+            "oui" if self.use_fallback_llm else "non"
         )
+
+    @staticmethod
+    def _format_context(docs: list[Document]) -> str:
+        """
+        Formate les chunks récupérés en contexte structuré.
+        Chaque chunk est clairement délimité avec sa source.
+        """
+        formatted = []
+        for i, doc in enumerate(docs, 1):
+            source = doc.metadata.get("source", "Document inconnu")
+            page = doc.metadata.get("page", "")
+            section = doc.metadata.get("heading", "")
+
+            # Construire la référence de source
+            if page:
+                source_ref = f"{source} (page {page})"
+            elif section:
+                source_ref = f"{source} (section: {section})"
+            else:
+                source_ref = source
+
+            formatted.append(
+                f"[Source {i}: {source_ref}]\n{doc.page_content}"
+            )
+
+        return "\n\n---\n\n".join(formatted)
 
     def _build_chain(self):
         """
-        Construit la chaîne RAG standard OpenAI.
+        Construit la chaîne de génération.
+
+        La récupération n'en fait délibérément pas partie : invoke() récupère les
+        chunks une seule fois (avec le filtre de rôle) puis passe le contexte
+        déjà formaté ici. Auparavant le retriever était intégré à la chaîne, donc
+        chaque question déclenchait DEUX recherches — et les sources renvoyées à
+        l'utilisateur pouvaient différer du contexte réellement vu par le LLM.
         """
-        def format_context(docs: list[Document]) -> str:
-            """
-            Formate les chunks récupérés en contexte structuré.
-            Chaque chunk est clairement délimité avec sa source.
-            """
-            formatted = []
-            for i, doc in enumerate(docs, 1):
-                source = doc.metadata.get("source", "Document inconnu")
-                page = doc.metadata.get("page", "")
-                section = doc.metadata.get("heading", "")
-
-                # Construire la référence de source
-                if page:
-                    source_ref = f"{source} (page {page})"
-                elif section:
-                    source_ref = f"{source} (section: {section})"
-                else:
-                    source_ref = source
-
-                formatted.append(
-                    f"[Source {i}: {source_ref}]\n{doc.page_content}"
-                )
-
-            return "\n\n---\n\n".join(formatted)
-
-        chain = (
-            RunnableParallel({
-                "context": self.retriever | format_context,
-                "question": RunnablePassthrough()
-            })
-            | self.prompt
-            | self.llm
-            | StrOutputParser()
-        )
-
-        return chain
+        return self.prompt | self.llm | StrOutputParser()
 
     def _fallback_answer(self, question: str, retrieved_docs: list[Document]) -> str:
         """
@@ -146,21 +149,29 @@ class RAGChain:
 
         return answer
 
-    def invoke(self, question: str) -> dict:
+    def invoke(self, question: str, role: str | None = None) -> dict:
         """
         Exécute la chaîne RAG complète.
         Retourne la réponse + les sources utilisées.
+
+        'role' restreint la recherche aux documents visibles par ce rôle
+        (cf. VectorStoreManager.role_filter).
         """
         try:
-            # Récupérer les chunks pertinents pour les sources
-            retrieved_docs = self.retriever.invoke(question)
+            # Une seule récupération, filtrée par rôle : sert à la fois de
+            # contexte pour le LLM et de liste de sources pour la réponse API.
+            retriever = self.vector_store_manager.get_retriever(role)
+            retrieved_docs = retriever.invoke(question)
 
             if self.use_fallback_llm:
                 # Mode de secours : générer une réponse à partir du contexte local
                 answer = self._fallback_answer(question, retrieved_docs)
             else:
                 # Mode normal : utiliser la chaîne RAG complète
-                answer = self.chain.invoke(question)
+                answer = self.chain.invoke({
+                    "context": self._format_context(retrieved_docs),
+                    "question": question
+                })
 
             # Construire les sources pour la réponse API
             sources = []
@@ -181,6 +192,7 @@ class RAGChain:
 
             logger.info(
                 f"Question traitée — "
+                f"role: {(role or 'inconnu').upper()} — "
                 f"{len(retrieved_docs)} chunks récupérés — "
                 f"réponse générée"
             )

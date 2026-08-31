@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Role } from '../models/auth.model';
+import { environment } from '../../../environments/environment';
 
 export interface UserResponse {
   id: number;
@@ -28,7 +29,7 @@ export interface UpdateUserRequest {
 export class UserService {
 
   private http = inject(HttpClient);
-  private readonly BASE_URL = 'http://localhost:8082/api/users';
+  private readonly BASE_URL = `${environment.apiBaseUrl}/api/users`;
 
   /**
    * Fetches all users.

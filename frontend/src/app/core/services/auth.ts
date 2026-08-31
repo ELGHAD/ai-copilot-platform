@@ -6,6 +6,7 @@ import { AuthResponse, LoginRequest, RegisterRequest } from '../models/auth.mode
 import { User } from '../models/user.model';
 import { TokenService } from './token';
 import { Role } from '../models/auth.model';
+import { environment } from '../../../environments/environment';
 /**
  * Handles all authentication operations.
  * Communicates with the backend via the gateway on port 8080.
@@ -16,7 +17,7 @@ import { Role } from '../models/auth.model';
 })
 export class AuthService {
 
-  private readonly API_URL = 'http://localhost:8081/api/auth';
+  private readonly API_URL = `${environment.apiBaseUrl}/api/auth`;
 
   // ─── Dependencies injected via inject() ───────────────────────────────────
   private tokenService = inject(TokenService);
